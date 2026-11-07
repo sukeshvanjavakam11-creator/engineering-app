@@ -65,10 +65,12 @@ with tab2:
     floor = st.number_input("Noise Floor Level:", value=20.0)
     
     if st.button("Process Thermal Matrix"):
-        mock_matrix = [,
- ,
- ,
-            [12, 14, 11, 13, 12, 11, 10,  9]
+        # Fixed complete numeric matrix layout to prevent compilation syntax errors
+        mock_matrix = [
+            [12.5, 14.2, 18.1, 15.0],
+            [10.2, 85.4, 22.1, 19.3],
+            [11.0, 16.8, 14.5, 12.2],
+            [14.1, 13.9, 17.2, 16.0]
         ]
         res = analyze_thermal_sensor(mock_matrix, floor, calibration_factor=0.045)
         
