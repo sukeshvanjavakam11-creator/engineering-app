@@ -1,0 +1,211 @@
+import os
+import tkinter as tk
+from tkinter import ttk, messagebox
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# =========================================================================
+# ENGINE CORE: CORE MATH SUBSYSTEMS
+# =========================================================================
+def track_space_junk(debris_radius, velocity_magnitude):
+    """Calculates space debris tracking properties."""
+    ALUMINUM_DENSITY = 2700
+    volume = (4/3) * math.pi * (debris_radius ** 3)
+    mass = volume * ALUMINUM_DENSITY
+    kinetic_energy = 0.5 * mass * (velocity_magnitude ** 2)
+    cross_section = math.pi * (debris_radius ** 2)
+    return {
+        "mass_kg": mass,
+        "kinetic_energy_joules": kinetic_energy,
+        "collision_area_m2": cross_section
+    }
+
+def analyze_thermal_sensor(signal_matrix, noise_floor, calibration_factor):
+    """Filters noise and highlights high-intensity thermal signatures."""
+    signals = np.array(signal_matrix)
+    filtered_signals = np.where(signals > noise_floor, signals, 0)
+    calibrated_flux = filtered_signals * calibration_factor
+    peak_index = np.unravel_index(np.argmax(calibrated_flux), calibrated_flux.shape)
+    peak_value = calibrated_flux[peak_index]
+    return {
+        "processed_flux_grid": calibrated_flux,
+        "peak_flux_value": peak_value,
+        "target_coordinates": peak_index
+    }
+
+def simulate_car_aerodynamics(drag_coeff, frontal_area, air_velocity_m_s):
+    """Calculates aerodynamic resistance profiles over a chassis."""
+    RHO_AIR = 1.225
+    drag_force = 0.5 * drag_coeff * RHO_AIR * frontal_area * (air_velocity_m_s ** 2)
+    power_loss_watts = drag_force * air_velocity_m_s
+    power_loss_hp = power_loss_watts / 745.7
+    return {
+        "drag_force_newtons": drag_force,
+        "power_loss_hp": power_loss_hp
+    }
+
+# =========================================================================
+# FRONTEND ENGINE: UI FRAMEWORK & GRAPH GENERATORS
+# =========================================================================
+class SukeshEngineeringApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Sukesh's Space & Aerodynamics Analysis Suite")
+        self.root.geometry("900x700")
+        
+        # Main Tab Control
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill='both', expand=True)
+        
+        # Create Tabs
+        self.tab1 = ttk.Frame(self.notebook)
+        self.tab2 = ttk.Frame(self.notebook)
+        self.tab3 = ttk.Frame(self.notebook)
+        
+        self.notebook.add(self.tab1, text="1. Space Junk Tracker")
+        self.notebook.add(self.tab2, text="2. Thermal Detector")
+        self.notebook.add(self.tab3, text="3. Car Aerodynamics")
+        
+        self.setup_space_junk_tab()
+        self.setup_thermal_tab()
+        self.setup_aero_tab()
+
+    # --- TAB 1: SPACE JUNK DESIGN ---
+    def setup_space_junk_tab(self):
+        frame = ttk.LabelFrame(self.tab1, text=" Debris Parameters ")
+        frame.pack(padx=15, pady=15, fill="x")
+        
+        ttk.Label(frame, text="Debris Radius (meters):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.junk_radius = ttk.Entry(frame)
+        self.junk_radius.insert(0, "0.05")
+        self.junk_radius.grid(row=0, column=1, padx=5, pady=5)
+        
+        ttk.Label(frame, text="Orbital Velocity (m/s):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.junk_velocity = ttk.Entry(frame)
+        self.junk_velocity.insert(0, "7500")
+        self.junk_velocity.grid(row=1, column=1, padx=5, pady=5)
+        
+        ttk.Button(frame, text="Analyze Threat Profile", command=self.run_space_junk).grid(row=2, column=0, columnspan=2, pady=10)
+        
+        self.junk_output = tk.Text(self.tab1, height=10, width=80)
+        self.junk_output.pack(padx=15, pady=10)
+
+    def run_space_junk(self):
+        try:
+            r = float(self.junk_radius.get())
+            v = float(self.junk_velocity.get())
+            res = track_space_junk(r, v)
+            
+            self.junk_output.delete("1.0", tk.END)
+            self.junk_output.insert(tk.END, f"=== RE-ENTRY & COLLISION PROFILE ===\n")
+            self.junk_output.insert(tk.END, f"Calculated Mass: {res['mass_kg']:.4f} kg\n")
+            self.junk_output.insert(tk.END, f"Collision Cross-Sectional Area: {res['collision_area_m2']:.5f} m²\n")
+            self.junk_output.insert(tk.END, f"Kinetic Energy Impact Potential: {res['kinetic_energy_joules']:.2f} Joules\n")
+            
+            if res['kinetic_energy_joules'] > 100000:
+                self.junk_output.insert(tk.END, "\nCRITICAL WARNING: High Energy Fragmentation Hazard Detected!")
+        except ValueError:
+            messagebox.showerror("Error", "Please input valid numerical entries.")
+
+    # --- TAB 2: THERMAL RADIATION DESIGN ---
+    def setup_thermal_tab(self):
+        frame = ttk.LabelFrame(self.tab2, text=" Matrix Controls ")
+        frame.pack(padx=15, pady=15, fill="x")
+        
+        ttk.Label(frame, text="Noise Floor Level:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.noise_floor = ttk.Entry(frame)
+        self.noise_floor.insert(0, "20")
+        self.noise_floor.grid(row=0, column=1, padx=5, pady=5)
+        
+        ttk.Button(frame, text="Process Thermal Matrix", command=self.run_thermal).grid(row=0, column=2, padx=10)
+        
+        self.thermal_canvas_frame = ttk.Frame(self.tab2)
+        self.thermal_canvas_frame.pack(fill="both", expand=True, padx=15, pady=5)
+
+    def run_thermal(self):
+        try:
+            floor = float(self.noise_floor.get())
+            mock_matrix = [
+                [10, 12, 11, 14, 13, 10, 12, 11],
+                [15, 18, 22, 25, 21, 16, 14, 12],
+                [14, 19, 85, 92, 45, 18, 15, 13],
+                [12, 14, 11, 13, 12, 11, 10, 9]
+            ]
+            res = analyze_thermal_sensor(mock_matrix, floor, calibration_factor=0.045)
+            
+            for widget in self.thermal_canvas_frame.winfo_children():
+                widget.destroy()
+                
+            fig, ax = plt.subplots(figsize=(5, 3))
+            im = ax.imshow(res['processed_flux_grid'], cmap='inferno', interpolation='nearest')
+            fig.colorbar(im, ax=ax, label="Radiant Flux (W/m²)")
+            ax.set_title(f"Target Peak Hotspot at Node Matrix: {res['target_coordinates']}")
+            
+            canvas = FigureCanvasTkAgg(fig, master=self.thermal_canvas_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+        except ValueError:
+            messagebox.showerror("Error", "Please input a valid noise threshold numerical value.")
+
+    # --- TAB 3: CAR AERODYNAMICS DESIGN ---
+    def setup_aero_tab(self):
+        frame = ttk.LabelFrame(self.tab3, text=" Hull Specification ")
+        frame.pack(padx=15, pady=15, fill="x")
+        
+        ttk.Label(frame, text="Drag Coefficient (Cd):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.car_cd = ttk.Entry(frame)
+        self.car_cd.insert(0, "0.28")
+        self.car_cd.grid(row=0, column=1, padx=5, pady=5)
+        
+        ttk.Label(frame, text="Frontal Cross Area (m²):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.car_area = ttk.Entry(frame)
+        self.car_area.insert(0, "2.2")
+        self.car_area.grid(row=1, column=1, padx=5, pady=5)
+        
+        ttk.Button(frame, text="Compute Performance Curve", command=self.run_aero).grid(row=2, column=0, columnspan=2, pady=10)
+        
+        self.aero_canvas_frame = ttk.Frame(self.tab3)
+        self.aero_canvas_frame.pack(fill="both", expand=True, padx=15, pady=5)
+
+    def run_aero(self):
+        try:
+            cd = float(self.car_cd.get())
+            area = float(self.car_area.get())
+            
+            for widget in self.aero_canvas_frame.winfo_children():
+                widget.destroy()
+                
+            velocities = np.linspace(1, 45, 50)
+            drag_forces = [simulate_car_aerodynamics(cd, area, v)["drag_force_newtons"] for v in velocities]
+            power_losses = [simulate_car_aerodynamics(cd, area, v)["power_loss_hp"] for v in velocities]
+            
+            fig, ax1 = plt.subplots(figsize=(5, 3))
+            
+            color = 'tab:red'
+            ax1.set_xlabel('Wind Velocity / Airflow speed (m/s)')
+            ax1.set_ylabel('Total Drag Force (N)', color=color)
+            ax1.plot(velocities, drag_forces, color=color, linewidth=2)
+            ax1.tick_params(axis='y', labelcolor=color)
+            
+            ax2 = ax1.twinx()
+            color = 'tab:blue'
+            ax2.set_ylabel('Power Lost to Resisting Drag (HP)', color=color)
+            ax2.plot(velocities, power_losses, color=color, linestyle='dashed', linewidth=2)
+            ax2.tick_params(axis='y', labelcolor=color)
+            
+            fig.tight_layout()
+            ax1.set_title("Fluid Resistance Dynamics Performance Profile")
+            
+            canvas = FigureCanvasTkAgg(fig, master=self.aero_canvas_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+        except ValueError:
+            messagebox.showerror("Error", "Please input correct numerical parameters.")
+
+# --- INITIALIZATION CONTROLLER ---
+if __name__ == "__main__":
+    app_window = tk.Tk()
+    engine = SukeshEngineeringApp(app_window)
+    app_window.mainloop()
